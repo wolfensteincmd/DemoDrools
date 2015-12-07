@@ -4,10 +4,21 @@
 package com.demodrools.service.impl;
 
 import org.kie.api.runtime.rule.FactHandle;
+import org.kie.internal.KnowledgeBase;
+import org.kie.internal.KnowledgeBaseFactory;
+import org.kie.internal.builder.KnowledgeBuilder;
+import org.kie.internal.builder.KnowledgeBuilderFactory;
+import org.kie.internal.io.ResourceFactory;
+import org.kie.internal.runtime.StatelessKnowledgeSession;
 
+import java.io.File;
 import java.util.List;
 
 import org.kie.api.KieServices;
+import org.kie.api.builder.KieBuilder;
+import org.kie.api.builder.KieFileSystem;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.KieSession;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,9 +39,27 @@ public class OperationsServiceImpl implements OperationsService {
 	OperationsDao operationsDao;
 	
 	public Operations executeOperation(String origin, String destination, double amount){
+		
+		String fileName = "/Users/erick/OperationsTables.xls";
+		
 		KieServices ks = KieServices.Factory.get();
-	    KieContainer kContainer = ks.getKieClasspathContainer();
-    	KieSession kSession = kContainer.newKieSession("operationsSession");
+		
+		File file = new File(fileName);
+	    Resource resource = ks.getResources().newFileSystemResource(file).setResourceType(ResourceType.DTABLE);
+	    KieFileSystem kFileSystem = ks.newKieFileSystem();
+	    kFileSystem.write( resource );
+	    KieBuilder kbuilder = ks.newKieBuilder( kFileSystem );
+        // kieModule is automatically deployed to KieRepository if successfully built.
+        kbuilder.buildAll();
+
+        if (kbuilder.getResults().hasMessages(org.kie.api.builder.Message.Level.ERROR)) {
+            throw new RuntimeException("Build time Errors: " + kbuilder.getResults().toString());
+        }
+        
+        KieContainer kContainer = ks.newKieContainer(ks.getRepository().getDefaultReleaseId());
+		
+	    //KieContainer kContainer = ks.getKieClasspathContainer();
+    	KieSession kSession = kContainer.newKieSession();
     	
     	Operations operations = new Operations();
     	operations.setOrigin(origin);
